@@ -4,6 +4,7 @@ package org.example.controller;
 import lombok.Data;
 import org.example.entity.AppUser;
 import org.example.entity.Problem;
+import org.example.repository.ProblemRepository;
 import org.example.service.UserAnswerService;
 import org.springframework.web.bind.annotation.*;
 import org.example.repository.AppUserRepository;
@@ -16,6 +17,8 @@ public class UserAnswerController {
 
     private final UserAnswerService userAnswerService;
     private final AppUserRepository appUserRepository;
+    private final ProblemRepository problemRepository;
+
 
 
     // POST 요청으로 사용자 답변 평가
@@ -26,8 +29,8 @@ public class UserAnswerController {
             throw new RuntimeException("User not found");
         }
 
-        Problem problem = new Problem();
-        problem.setId(request.getProblemId());
+        Problem problem = problemRepository.findById(request.getProblemId())
+                .orElseThrow(() -> new RuntimeException("문제 없음"));
 
         return userAnswerService.evaluateUserAnswer(user, problem, request.getCode(), request.getLanguage());
     }

@@ -28,11 +28,12 @@ public class UserAnswerService {
             if (!isCodeFormat(userCode)) {
                 return "⚠️ 코드 형태로 답변을 입력해주세요.";
             }
-
+            System.out.println("답 판별시 저장된 문제 Description: " + problem.getDescription());
             // ✅ ChatGPT에 보낼 system / user 프롬프트 구성
             String systemPrompt = """
                 당신은 숙련된 알고리즘 채점관입니다.
                 사용자가 제출한 코드를 보고 정답 여부를 판단하세요.
+                - 문제 설명과 입출력 예제를 참고하세요.
                 - 언어는 C, Java, Python 등이 될 수 있습니다.
                 - 반드시 '정답입니다.' 또는 '틀렸습니다.' 중 하나로 시작하세요.
                 - 이유가 있다면 간단히 한 줄로 설명하세요.
@@ -40,13 +41,14 @@ public class UserAnswerService {
 
             // ✅ questionId 제거 → problem.getId() 사용
             String userPrompt = String.format("""
-                문제 ID: %d
+                문제 제목: %s
+                문제 설명: %s
                 언어: %s
                 코드:
                 ```
                 %s
                 ```
-            """, problem.getId(), language, userCode);
+            """, problem.getTitle(), problem.getDescription(), language, userCode);
 
             // ✅ ChatGPT로 평가 요청
             String result = openAiClient.chat(systemPrompt, userPrompt);

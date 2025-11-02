@@ -1,5 +1,6 @@
 package org.example.service;
 
+import jakarta.transaction.Transactional;
 import org.example.entity.Problem;
 import org.example.repository.ProblemRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class ChatService {
     private static final Pattern BAekjoonPattern = Pattern.compile("(https?://www\\.acmicpc\\.net/problem/\\d+)");
     private static final Pattern hintPattern = Pattern.compile("힌트\\s*(\\d+)");
 
+    @Transactional // 11/2추가
     public String handleMessage(String username, String message) {
         try {
             // 1) 문제 URL 포함?
@@ -28,9 +30,11 @@ public class ChatService {
                 String url = m.group(1);
                 Problem p = fetcherService.fetchFromBaekjoon(url);
                 problemRepository.save(p);
+                System.out.println("저장된 문제 ID: " + p.getId());
                 // 텍스트 요약: HTML 태그 제거 후 300자
                 String text = p.getDescription().replaceAll("<[^>]*>", "").trim();
                 String summary = text.length() > 300 ? text.substring(0, 300) + "..." : text;
+                System.out.println("문제 가져올 때 저장된 Description: " + p.getDescription());
                 return "문제를 가져왔어요: " + p.getTitle() + "\n요약:\n" + summary;
             }
 
