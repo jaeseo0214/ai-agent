@@ -9,6 +9,8 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+
+@Table(name = "USERS")
 public class AppUser {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
