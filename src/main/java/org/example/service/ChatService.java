@@ -33,9 +33,9 @@ public class ChatService {
                 System.out.println("저장된 문제 ID: " + p.getId());
                 // 텍스트 요약: HTML 태그 제거 후 300자
                 String text = p.getDescription().replaceAll("<[^>]*>", "").trim();
-                String summary = text.length() > 300 ? text.substring(0, 300) + "..." : text;
+                String summary = text.length() > 1000 ? text.substring(0, 1000) + "..." : text;
                 System.out.println("문제 가져올 때 저장된 Description: " + p.getDescription());
-                return "문제를 가져왔어요: " + p.getTitle() + "\n요약:\n" + summary;
+                return "[" + p.getTitle() +"]" + "\n문제: " + summary;
             }
 
             // 2) 힌트 요청?
