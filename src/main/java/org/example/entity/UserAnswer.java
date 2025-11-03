@@ -1,11 +1,9 @@
 package org.example.entity;
 
-import jakarta.persistence.Entity;
+import jakarta.persistence.*;
 import lombok.*;
-import jakarta.persistence.Id;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.ManyToOne;
+
+import java.time.OffsetDateTime;
 
 @Entity
 @Getter
@@ -13,18 +11,27 @@ import jakarta.persistence.ManyToOne;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-
+@Table(name = "user_answer", schema = "core")
 public class UserAnswer {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;  // 답변 고유 번호
+    private Long id; // bigserial
 
-    @ManyToOne
-    private AppUser user;      // 누가 풀었는지
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", referencedColumnName = "id") // core.users.id (uuid)
+    private AppUser user;
 
-    @ManyToOne
-    private Problem problem; // 어떤 문제를 풀었는지
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "problem_id", referencedColumnName = "problem_id") // core.problems.problem_id (uuid)
+    private Problem problem;
 
-    private String answer;  // 사용자가 입력한 답
-    private Boolean correct; // 정답 여부
+    @Column(columnDefinition = "text", nullable = false)
+    private String answer;
+
+    @Column(nullable = false)
+    private boolean correct;
+
+    @Column(name = "created_at", nullable = false)
+    private OffsetDateTime createdAt = OffsetDateTime.now();
 }
