@@ -5,7 +5,7 @@ import org.example.entity.Problem;
 import org.example.entity.UserAnswer;
 import org.example.repository.UserAnswerRepository;
 import org.springframework.stereotype.Service;
-
+import org.jsoup.Jsoup;
 
 
 @Service
@@ -29,24 +29,37 @@ public class UserAnswerService {
                 return "⚠️ 코드 형태로 답변을 입력해주세요.";
             }
 
+            // ✅ HTML 제거 후 plain text로 문제 내용 추출
+            String descriptionText = Jsoup.parse(problem.getDescription() != null ? problem.getDescription() : "").text();
+
+            // ✅ 예시 입력/출력 null 또는 공백 처리
+            String exampleInput = (problem.getExampleInput() != null && !problem.getExampleInput().isBlank()) ?
+                    problem.getExampleInput() : "사용자 입력이 필요합니다.";
+            String exampleOutput = (problem.getExampleOutput() != null && !problem.getExampleOutput().isBlank()) ?
+                    problem.getExampleOutput() : "출력 결과를 예측해야 합니다.";
+
             // ✅ ChatGPT에 보낼 system / user 프롬프트 구성
             String systemPrompt = """
-                당신은 숙련된 알고리즘 채점관입니다.
-                사용자가 제출한 코드를 보고 정답 여부를 판단하세요.
-                - 언어는 C, Java, Python 등이 될 수 있습니다.
-                - 반드시 '정답입니다.' 또는 '틀렸습니다.' 중 하나로 시작하세요.
-                - 이유가 있다면 간단히 한 줄로 설명하세요.
+            당신은 숙련된 알고리즘 채점관입니다.
+            사용자가 제출한 코드를 보고 정답 여부를 판단하세요.
+            - 예시 입력/출력이 없더라도, 코드 로직이 문제에 맞는지 확인하세요.
+            - 반드시 '정답입니다.' 또는 '틀렸습니다.' 중 하나로 시작하세요.
+            - 이유가 있다면 간단히 한 줄로 설명하세요.
             """;
 
-            // ✅ questionId 제거 → problem.getId() 사용
             String userPrompt = String.format("""
                 문제 ID: %d
+                문제 내용: %s
+                예시 입력:
+                %s
+                예시 출력:
+                %s
                 언어: %s
                 코드:
                 ```
                 %s
                 ```
-            """, problem.getId(), language, userCode);
+            """, problem.getId(), descriptionText, exampleInput, exampleOutput, language, userCode);
 
             // ✅ ChatGPT로 평가 요청
             String result = openAiClient.chat(systemPrompt, userPrompt);

@@ -27,4 +27,10 @@ public class Problem {
 
     @Column(length = 2000)
     private String note;          // 내부 메모 (예: 크롤링 시 주의점)
+
+    @Column(length = 3000)
+    private String exampleInput;   // 예시 입력
+
+    @Column(length = 3000)
+    private String exampleOutput;  // 예시 출력
 }
