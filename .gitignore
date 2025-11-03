@@ -4,6 +4,11 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 .kotlin
+node_modules/
+logs/
+*.log
+tmp/
+*.pid
 
 ### IntelliJ IDEA ###
 .idea/modules.xml
@@ -13,6 +18,9 @@ build/
 *.iws
 *.iml
 *.ipr
+.env
+.env.*
+docker-compose.override.yml
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/

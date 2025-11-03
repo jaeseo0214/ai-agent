@@ -18,7 +18,7 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind") // JSON 파싱용
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    runtimeOnly("com.h2database:h2")
+    runtimeOnly("org.postgresql:postgresql:42.7.4")
     implementation("org.jsoup:jsoup:1.16.1")
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")

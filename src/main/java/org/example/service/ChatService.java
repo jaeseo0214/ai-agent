@@ -1,10 +1,12 @@
 package org.example.service;
 
+import jakarta.transaction.Transactional;
 import org.example.entity.Problem;
 import org.example.repository.ProblemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -17,36 +19,30 @@ public class ChatService {
     private final HintService hintService;
     private final OpenAiClient openAiClient;
 
-    private static final Pattern BAekjoonPattern = Pattern.compile("(https?://www\\.acmicpc\\.net/problem/\\d+)");
     private static final Pattern hintPattern = Pattern.compile("힌트\\s*(\\d+)");
 
+    @Transactional // 11/2추가
     public String handleMessage(String username, String message) {
         try {
-            // 1) 문제 URL 포함?
-            Matcher m = BAekjoonPattern.matcher(message);
-            if (m.find()) {
-                String url = m.group(1);
-                Problem p = fetcherService.fetchFromBaekjoon(url);
-                problemRepository.save(p);
-                // 텍스트 요약: HTML 태그 제거 후 300자
-                String text = p.getDescription().replaceAll("<[^>]*>", "").trim();
-                String summary = text.length() > 300 ? text.substring(0, 300) + "..." : text;
-                return "문제를 가져왔어요: " + p.getTitle() + "\n요약:\n" + summary;
-            }
-
-            // 2) 힌트 요청?
             Matcher hm = hintPattern.matcher(message);
             if (hm.find()) {
                 int step = Integer.parseInt(hm.group(1));
-                // 가장 최근 가져온 문제(간단 구현): DB에서 마지막으로 추가된 문제를 사용
-                Problem last = problemRepository.findAll()
-                        .stream()
-                        .reduce((first, second) -> second) // get last
-                        .orElse(null);
 
-                if (last == null) return "현재 저장된 문제가 없습니다. 문제 URL을 먼저 가져와 주세요.";
-                String problemText = last.getDescription().replaceAll("<[^>]*>", "");
-                return hintService.generateHint(problemText, step);
+                // ★ username → problemId → DB
+                UUID pid = CurrentProblemStore.get(username);
+                if (pid == null) {
+                    return "현재 배정된 문제가 없습니다. 먼저 난이도를 선택해 문제를 받아주세요.";
+                }
+                Problem cp = problemRepository.findById(pid).orElse(null);
+                if (cp == null) {
+                    return "문제를 찾지 못했습니다. 다시 문제를 받아주세요.";
+                }
+
+                String html = cp.getBody() == null ? "" : cp.getBody();
+                if (html.isBlank()) {
+                    return "이 문제의 본문이 비어 있습니다. 다른 문제를 받아주세요.";
+                }
+                return hintService.generateHint(html, step);
             }
 
             // 3) 자바로 풀어줘 요청?

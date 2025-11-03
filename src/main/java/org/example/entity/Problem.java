@@ -3,34 +3,52 @@ package org.example.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.UUID;
+
 @Entity
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Table(name = "problems", schema = "core")
 public class Problem {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "problem_id")
+    private UUID id;
 
+    @Column(name = "external_key")
+    private String key;
+
+    @Column(name  = "title")
     private String title;
 
-    @Column(length = 10000)
+    @Column(name = "body")
     private String description;   // HTML 허용 가능
 
-    // 난이도: 1~5 (정수형으로 관리하면 범위 제어 쉬움)
+    @Column(name = "difficulty")
     private Integer level;
 
-    private String topic;         // "DP", "BFS" 등 태그
+    @Column(name = "difficulty_title")
+    private String topic;
+
+    @Column(name = "meta", columnDefinition = "jsonb")
     private String sourceUrl;     // 출처 URL
 
-    @Column(length = 2000)
-    private String note;          // 내부 메모 (예: 크롤링 시 주의점)
+    @Column(name = "input_desc")
+    private String inputDesc;
 
-    @Column(length = 3000)
-    private String exampleInput;   // 예시 입력
+    @Column(name = "output_desc")
+    private String outputDesc;
 
-    @Column(length = 3000)
-    private String exampleOutput;  // 예시 출력
+    // jsonb 이지만 문자열로 받아두면 무관
+    @Column(name = "samples", columnDefinition = "jsonb")
+    private String samples;
+
+    public UUID getProblemId() { return id; }
+    public String getExternalKey() { return key; }
+    public String getTitle() { return title; }
+    public String getBody() { return description; }
+    public Integer getDifficulty() { return level; }
+    public String getDifficultyTitle() { return topic; }
 }
