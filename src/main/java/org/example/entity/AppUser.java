@@ -1,28 +1,30 @@
 package org.example.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
 
-@Entity
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
 @Getter
-@Setter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
-
-@Table(name = "USERS")
+@Entity
+@Table(name = "users", schema = "core")  // ← core.users 에 매핑
 public class AppUser {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
 
-    @Column(unique = true, nullable = false)
+    @Id
+    @Column(name = "id", columnDefinition = "uuid")
+    private UUID id;
+
+    @Column(name = "username", nullable = false)
     private String username;
 
-    private String displayName;
+    @Column(name = "level", nullable = false)
+    private Integer level;               // 정수 레벨(예: 1)
 
-    // level 1~5 기본값 1
-    private Integer level = 1;
-
-    private Integer solvedCount = 0;
+    @CreationTimestamp
+    @Column(name = "created_at")
+    private OffsetDateTime createdAt;
 }

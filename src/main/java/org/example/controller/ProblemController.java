@@ -1,16 +1,20 @@
-// ProblemController.java
+// src/main/java/org/example/controller/ProblemController.java
 package org.example.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import org.example.entity.ChatSession;
 import org.example.entity.Problem;
+import org.example.repository.ChatSessionRepository;
+import org.example.repository.ProblemRepository;
 import org.example.service.CurrentProblemStore;
 import org.example.service.ProblemFetcherService;
-import org.example.repository.ProblemRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,10 +26,13 @@ public class ProblemController {
     private final ProblemFetcherService fetcher;
     private final ProblemRepository problemRepository;
     private final CurrentProblemStore currentProblemStore;
+    private final ChatSessionRepository chatSessionRepository;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // 유니코드 구분선 (박스 드로잉 문자)
-    private static final String SEP = "\n──────────────────────────────────────────\n";
+    // 보기 좋은 구분선(유니코드/ASCII)
+    private static final String SEP =
+            "\n────────────────────────────────────────\n";
 
     @CrossOrigin(origins = "http://localhost:3000")
     @GetMapping("/random-by-level")
@@ -34,15 +41,58 @@ public class ProblemController {
             @RequestParam(required = false) String username
     ) {
         Problem p = fetcher.fetchFromDbByLevel(level);
-        if (p == null) {
-            return ResponseEntity.noContent().build();
-        }
+        if (p == null) return ResponseEntity.noContent().build();
 
-        // 사용자별 현재 문제 UUID 저장 (힌트/채점에서 사용)
+        // 1) 현재 사용자별 "배정 문제 UUID" 유지(힌트·채점에서 사용)
         if (username != null && !username.isBlank()) {
             currentProblemStore.put(username, p.getId());
         }
 
+        // 2) 대화(세션) 저장 — 핵심은 problemId(UUID)만 넣는 것!
+        UUID sessionId = null;
+        if (username != null && !username.isBlank()) {
+            ChatSession s = ChatSession.builder()
+                    .problemId(p.getId())
+                    .difficulty(p.getDifficulty())
+                    .username(username)
+                    .title(Optional.ofNullable(p.getTitle()).orElse("제목 없음"))
+                    .hintsUsed(0)
+                    .solved(false)
+                    .createdAt(OffsetDateTime.now(ZoneOffset.UTC))
+                    .build();
+            chatSessionRepository.save(s);
+            sessionId = s.getId();
+        }
+
+        // 3) 프론트로 내려줄 표시 문자열
+        String body = buildProblemText(p);
+        var rb = ResponseEntity.ok();
+        if (sessionId != null) rb.header("X-Session-Id", sessionId.toString());
+        return rb.body(body);
+    }
+
+    // 세션 ID로 다시 불러오기 (RecordPage “다시보기”에서 사용)
+    @CrossOrigin(origins = "http://localhost:3000")
+    @GetMapping("/by-session")
+    public ResponseEntity<String> loadBySession(@RequestParam UUID sessionId) {
+        var s = chatSessionRepository.findById(sessionId).orElse(null);
+        if (s == null) return ResponseEntity.notFound().build();
+
+        var p = problemRepository.findById(s.getProblemId()).orElse(null);
+        if (p == null) return ResponseEntity.notFound().build();
+
+        // (선택) currentProblemStore를 쓰고 있다면 유지
+        if (s.getUsername() != null && !s.getUsername().isBlank()) {
+            currentProblemStore.put(s.getUsername(), p.getId());
+        }
+
+        String body = buildProblemText(p);
+        return ResponseEntity.ok(body);
+    }
+
+    /* ====================== 표시 문자열 조립부 ====================== */
+
+    private String buildProblemText(Problem p) {
         // 본문(HTML → 텍스트)
         String bodyHtml = Optional.ofNullable(p.getDescription()).orElse("");
         String bodyText = cleanHtml(bodyHtml);
@@ -52,32 +102,29 @@ public class ProblemController {
                 Optional.ofNullable(p.getDifficultyTitle()).orElse(""),
                 Optional.ofNullable(p.getTitle()).orElse("제목 없음"));
 
-        // 입력/출력/예제 섹션
+        // 입력/출력/예제
         String ioSections = buildIoSections(p);
 
-        // 최종 문자열 (기존 포맷 유지 + 구분선 추가)
+        // 최종 문자열 (구분선 포함)
         StringBuilder sb = new StringBuilder();
         sb.append(titleLine).append(SEP)
                 .append("문제:\n").append(bodyText).append(SEP)
                 .append(ioSections);
 
-        return ResponseEntity.ok(sb.toString());
+        return sb.toString();
     }
 
-    // ====== 헬퍼 ======
-
-    // HTML 태그 제거 + 개행 보정
+    // HTML 태그 제거 + 공백 정리
     private String cleanHtml(String html) {
-        String t = html.replaceAll("(?is)<br\\s*/?>", "\n")
-                .replaceAll("(?is)</p>", "\n")
-                .replaceAll("(?is)<[^>]+>", "")
-                .replace("&nbsp;", " ")
-                .replaceAll("[ \\t\\x0B\\f\\r]+", " ")
-                .trim();
+        String t = html.replaceAll("(?is)<br\\s*/?>", "\n");
+        t = t.replaceAll("(?is)</p>", "\n");
+        t = t.replaceAll("(?is)<[^>]+>", "");
+        t = t.replace("&nbsp;", " ");
+        t = t.replaceAll("[ \\t\\x0B\\f\\r]+", " ").trim();
         return t;
     }
 
-    // 입력/출력/예제 렌더링 (유니코드 구분선 사용)
+    // 입력/출력/예제 렌더링 (DB의 input_desc, output_desc, samples 사용)
     private String buildIoSections(Problem p) {
         StringBuilder sb = new StringBuilder();
 
@@ -85,15 +132,11 @@ public class ProblemController {
         String out = Optional.ofNullable(p.getOutputDesc()).map(String::trim).orElse("");
         String samplesJson = Optional.ofNullable(p.getSamples()).orElse("");
 
-        boolean wroteSomething = false;
-
         if (!in.isBlank()) {
             sb.append("입력:\n").append(in).append(SEP);
-            wroteSomething = true;
         }
         if (!out.isBlank()) {
             sb.append("출력:\n").append(out).append(SEP);
-            wroteSomething = true;
         }
 
         if (!samplesJson.isBlank()) {
@@ -102,41 +145,26 @@ public class ProblemController {
                 if (arr.isArray()) {
                     int idx = 1;
                     for (JsonNode node : arr) {
-                        String name   = node.path("name").asText("");
+                        String name   = node.path("name").asText("");  // 옵션
                         String input  = node.path("input").asText("");
                         String output = node.path("output").asText("");
 
-                        String inTitle  = name.isBlank() ? ("예제 입력 "  + idx) : name.replace("출력", "입력");
-                        String outTitle = name.isBlank() ? ("예제 출력 " + idx) : name.replace("입력", "출력");
+                        String inTitle  = name.isBlank() ? ("예제 입력 " + idx)  : name.replace("출력", "입력");
+                        String outTitle = name.isBlank() ? ("예제 출력 " + idx)  : name.replace("입력", "출력");
 
                         if (!input.isEmpty()) {
-                            sb.append(inTitle).append(":\n")
-                                    .append(input).append("\n");
+                            sb.append(inTitle).append(":\n").append(input).append(SEP);
                         }
                         if (!output.isEmpty()) {
-                            sb.append(outTitle).append(":\n")
-                                    .append(output).append("\n");
+                            sb.append(outTitle).append(":\n").append(output).append(SEP);
                         }
-
-                        // 각 예제 블록 끝에 구분선 추가
-                        sb.append(SEP);
-                        wroteSomething = true;
                         idx++;
                     }
                 }
             } catch (Exception ignore) {
-                // samples 파싱 실패 시 본문만 보여줘도 되므로 무시
+                // samples 파싱 실패는 무시 (본문만 표기)
             }
         }
-
-        // 마지막이 SEP로 끝나면 깔끔하게 제거
-        if (wroteSomething && sb.length() >= SEP.length()) {
-            int from = sb.length() - SEP.length();
-            if (sb.substring(from).equals(SEP)) {
-                sb.delete(from, sb.length());
-            }
-        }
-
         return sb.toString();
     }
 }

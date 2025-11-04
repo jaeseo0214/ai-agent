@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 
 @Service
@@ -28,8 +29,8 @@ public class ProblemService {
      * - 동일 레벨 문제가 없으면 모든 문제 중에서 랜덤으로 제공
      */
     public Problem recommendForUser(String username) {
-        AppUser user = userRepository.findByUsername(username);
-        int level = (user != null && user.getLevel() != null) ? user.getLevel() : 1;
+        Optional<AppUser> user = userRepository.findByUsername(username);
+        int level = (user.isPresent() && user.get().getLevel() != null) ? user.get().getLevel() : 1;
 
         // 간단 매핑: level 1~2 -> level=1, 3~4->2, 5->3 (DB에 맞게 세분화 가능)
         int dbLevel = Math.max(1, Math.min(5, level)); // 보정
