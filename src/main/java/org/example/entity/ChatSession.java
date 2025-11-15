@@ -22,13 +22,17 @@ public class ChatSession {
     @Id
     @GeneratedValue
     @JdbcTypeCode(SqlTypes.UUID)                 // Postgres uuid 매핑
-    @Column(name = "id", nullable = false, columnDefinition = "uuid")
-    private UUID id;
+    @Column(name = "session_id", nullable = false, columnDefinition = "uuid")
+    private UUID sessionId;
 
     // ✅ Problem 연관관계 대신, problem_id(UUID)만 저장
     @JdbcTypeCode(SqlTypes.UUID)
     @Column(name = "problem_id", nullable = false, columnDefinition = "uuid")
     private UUID problemId;
+
+    // 참조 사용자 ID
+    @Column(name = "user_id")
+    private Long userId;
 
     // 난이도(정수)
     @Column(name = "difficulty", nullable = false)
@@ -37,10 +41,6 @@ public class ChatSession {
     // 세션 생성 시각 (UTC 권장)
     @Column(name = "created_at", nullable = false, columnDefinition = "timestamptz")
     private OffsetDateTime createdAt;
-
-    // 사용자명
-    @Column(name = "username", length = 255, nullable = false)
-    private String username;
 
     // 문제 제목
     @Column(name = "title", length = 255, nullable = false)
@@ -53,6 +53,11 @@ public class ChatSession {
     // 정답 여부
     @Column(name = "solved", nullable = false)
     private Boolean solved;
+
+    // 대화 기록 메세지
+    @Builder.Default
+    @Column(name = "messages", columnDefinition = "text", nullable = false)
+    private String messages = "[]";
 
     @PrePersist
     void onCreate() {

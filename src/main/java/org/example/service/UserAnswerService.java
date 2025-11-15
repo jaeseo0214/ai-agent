@@ -1,6 +1,6 @@
 package org.example.service;
 
-import org.example.entity.AppUser;
+import org.example.entity.LogInEntity;
 import org.example.entity.Problem;
 import org.example.entity.UserAnswer;
 import org.example.repository.UserAnswerRepository;
@@ -22,7 +22,7 @@ public class UserAnswerService {
     /**
      * 사용자의 답변을 ChatGPT에 보내서 정답 여부를 판별하는 메서드
      */
-    public String evaluateUserAnswer(AppUser user, Problem problem, String userCode, String language) {
+    public String evaluateUserAnswer(LogInEntity user, Problem problem, String userCode, String language) {
         try {
             // ✅ 코드 형태인지 간단히 확인
             if (!isCodeFormat(userCode)) {

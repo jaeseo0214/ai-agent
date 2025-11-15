@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface ProblemRepository extends JpaRepository<Problem, UUID> {
@@ -31,6 +32,4 @@ public interface ProblemRepository extends JpaRepository<Problem, UUID> {
         var list = pickRandomWithin(level, level, PageRequest.of(0, 1));
         return list.isEmpty() ? null : list.get(0);
     }
-
-    // findById(UUID id) 는 JpaRepository가 이미 제공
 }

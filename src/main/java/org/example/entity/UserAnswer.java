@@ -19,8 +19,8 @@ public class UserAnswer {
     private Long id; // bigserial
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", referencedColumnName = "id") // core.users.id (uuid)
-    private AppUser user;
+    @JoinColumn(name = "user_id", referencedColumnName = "id") //
+    private LogInEntity user;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "problem_id", referencedColumnName = "problem_id") // core.problems.problem_id (uuid)

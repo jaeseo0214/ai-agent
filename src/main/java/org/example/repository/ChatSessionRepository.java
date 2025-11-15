@@ -8,10 +8,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ChatSessionRepository extends JpaRepository<ChatSession, UUID> {
-    // 유저 + 문제 기준으로 "가장 최근 1건"
-    Optional<ChatSession> findTopByUsernameAndProblemIdOrderByCreatedAtDesc(
-            String username, UUID problemId);
+    // 채점용: userId + problemId 기준, 가장 최근 1건
+    Optional<ChatSession> findTopByUserIdAndProblemIdOrderByCreatedAtDesc(
+            Long userId, UUID problemId);
 
-    // 기록 페이지(최신순 목록) 용
-    List<ChatSession> findByUsernameOrderByCreatedAtDesc(String username);
+    // 기록용: 한 유저의 전체 세션 목록
+    List<ChatSession> findByUserIdOrderByCreatedAtDesc(Long userId);
 }

@@ -21,6 +21,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/problems")
+@CrossOrigin(origins = "http://localhost:3000")
 public class ProblemController {
 
     private final ProblemFetcherService fetcher;
@@ -30,63 +31,79 @@ public class ProblemController {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // 보기 좋은 구분선(유니코드/ASCII)
+    // 구분선
     private static final String SEP =
             "\n────────────────────────────────────────\n";
-
-    @CrossOrigin(origins = "http://localhost:3000")
+    /**
+     * 레벨 기반 랜덤 문제 출제
+     * - DB에서 level로 문제 뽑기
+     * - userId가 있으면 chat_session 레코드 생성 + currentProblemStore 에 문제 ID 저장
+     * - 응답 헤더 X-Session-Id 로 세션 ID 전달
+     */
     @GetMapping("/random-by-level")
     public ResponseEntity<String> randomByLevel(
             @RequestParam int level,
-            @RequestParam(required = false) String username
+            @RequestParam(required = false) Long userId
     ) {
         Problem p = fetcher.fetchFromDbByLevel(level);
         if (p == null) return ResponseEntity.noContent().build();
 
-        // 1) 현재 사용자별 "배정 문제 UUID" 유지(힌트·채점에서 사용)
-        if (username != null && !username.isBlank()) {
-            currentProblemStore.put(username, p.getId());
+        // 1) 사용자별 현재 배정 문제 기억
+        if (userId != null) {
+            currentProblemStore.put(userId, p.getId());
         }
 
-        // 2) 대화(세션) 저장 — 핵심은 problemId(UUID)만 넣는 것!
+        // 2) chat_session 생성 (problemId만 연결)
         UUID sessionId = null;
-        if (username != null && !username.isBlank()) {
+        if (userId != null) {
             ChatSession s = ChatSession.builder()
                     .problemId(p.getId())
                     .difficulty(p.getDifficulty())
-                    .username(username)
+                    .userId(userId)
                     .title(Optional.ofNullable(p.getTitle()).orElse("제목 없음"))
                     .hintsUsed(0)
                     .solved(false)
                     .createdAt(OffsetDateTime.now(ZoneOffset.UTC))
+                    .messages("[]")
                     .build();
             chatSessionRepository.save(s);
-            sessionId = s.getId();
+            sessionId = s.getSessionId();
         }
 
-        // 3) 프론트로 내려줄 표시 문자열
+        // 3) 프론트에 내려줄 표시 문자열
         String body = buildProblemText(p);
+
         var rb = ResponseEntity.ok();
         if (sessionId != null) rb.header("X-Session-Id", sessionId.toString());
         return rb.body(body);
     }
 
+    /**
+     * 세션 ID로 문제 텍스트 복구 (RecordPage "다시보기"에서 사용)
+     * chat_session.problem_id 로 문제 찾기
+     */
     // 세션 ID로 다시 불러오기 (RecordPage “다시보기”에서 사용)
-    @CrossOrigin(origins = "http://localhost:3000")
     @GetMapping("/by-session")
-    public ResponseEntity<String> loadBySession(@RequestParam UUID sessionId) {
-        var s = chatSessionRepository.findById(sessionId).orElse(null);
-        if (s == null) return ResponseEntity.notFound().build();
-
-        var p = problemRepository.findById(s.getProblemId()).orElse(null);
-        if (p == null) return ResponseEntity.notFound().build();
-
-        // (선택) currentProblemStore를 쓰고 있다면 유지
-        if (s.getUsername() != null && !s.getUsername().isBlank()) {
-            currentProblemStore.put(s.getUsername(), p.getId());
+    public ResponseEntity<String> loadBySession(@RequestParam("sessionId") UUID sessionId) {
+        Optional<ChatSession> optSession = chatSessionRepository.findById(sessionId);
+        if (optSession.isEmpty()) {
+            return ResponseEntity.notFound().build();
         }
 
-        String body = buildProblemText(p);
+        ChatSession s = optSession.get();
+
+        // problem_id 로 조회
+        Problem problem = null;
+        UUID pid = s.getProblemId();
+        if (pid != null) {
+            problem = problemRepository.findById(pid).orElse(null);
+        }
+
+        if (s.getUserId() != null) {
+            currentProblemStore.put(s.getUserId(), problem.getId());
+        }
+
+        String body = buildProblemText(problem);
         return ResponseEntity.ok(body);
     }
 

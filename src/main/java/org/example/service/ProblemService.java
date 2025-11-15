@@ -1,6 +1,6 @@
 package org.example.service;
 
-import org.example.entity.AppUser;
+import org.example.entity.LogInEntity;
 import org.example.entity.Problem;
 import org.example.repository.AppUserRepository;
 import org.example.repository.ProblemRepository;
@@ -16,7 +16,7 @@ import java.util.Random;
 public class ProblemService {
 
     private final ProblemRepository problemRepository;
-    private final AppUserRepository userRepository;
+    private final AppUserRepository appuserRepository;
     private final Random random = new Random();
 
     public Problem save(Problem problem) {
@@ -28,8 +28,8 @@ public class ProblemService {
      * - 사용자의 level을 받아서 난이도 범위 결정
      * - 동일 레벨 문제가 없으면 모든 문제 중에서 랜덤으로 제공
      */
-    public Problem recommendForUser(String username) {
-        Optional<AppUser> user = userRepository.findByUsername(username);
+    public Problem recommendForUser(Long userId) {
+        Optional<LogInEntity> user = appuserRepository.findById(userId);
         int level = (user.isPresent() && user.get().getLevel() != null) ? user.get().getLevel() : 1;
 
         // 간단 매핑: level 1~2 -> level=1, 3~4->2, 5->3 (DB에 맞게 세분화 가능)

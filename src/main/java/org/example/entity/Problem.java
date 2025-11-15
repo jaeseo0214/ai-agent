@@ -23,7 +23,7 @@ public class Problem {
     @Column(name  = "title")
     private String title;
 
-    @Column(name = "body")
+    @Column(name = "body", columnDefinition = "text")
     private String description;   // HTML 허용 가능
 
     @Column(name = "difficulty")
