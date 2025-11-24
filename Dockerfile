@@ -1,10 +1,10 @@
 # Dockerfile
-FROM openjdk:dk-17.0.17.10-hotspot
+FROM gradle:jdk17-jammy AS build
 
 WORKDIR /app
 
 COPY . .
 
-RUN ./gradlew build
+RUN gradle build --no-daemon
 
 CMD ["java", "-jar", "build/libs/aiAgent-1.0.0.jar"]
